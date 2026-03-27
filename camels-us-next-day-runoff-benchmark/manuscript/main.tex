@@ -1,0 +1,405 @@
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{amsmath,amssymb}
+\usepackage{makecell}
+\usepackage{siunitx}
+\usepackage{ragged2e}
+\usepackage{adjustbox}
+\usepackage{xurl}
+\usepackage{threeparttable}
+\usepackage{placeins}
+\usepackage{longtable}
+\usepackage{pdflscape}
+
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\emergencystretch=2em
+\sisetup{detect-all}
+
+\journal{Journal of Hydrology}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Benchmarking interpretable machine-learning models for next-day runoff prediction across a 50-basin CAMELS-US subset}
+
+\author[giki]{Zeeshan Asghar\corref{cor1}\fnref{orcid1}}
+\ead{zeeshan.asghar@giki.edu.pk}
+
+\author[giki]{Muhammad Waseem\fnref{orcid2}}
+\ead{muhammad.waseem@giki.edu.pk}
+
+\cortext[cor1]{Corresponding author}
+\fntext[orcid1]{ORCID: 0000-0002-1029-2444}
+\fntext[orcid2]{ORCID: 0000-0001-9442-5664}
+
+\affiliation[giki]{organization={Ghulam Ishaq Khan Institute of Engineering Sciences and Technology},
+             city={Topi},
+             state={Khyber Pakhtunkhwa},
+             country={Pakistan}}
+
+\begin{abstract}
+\input{Abstract}
+\end{abstract}
+
+\begin{keyword}
+CAMELS-US \sep daily runoff prediction \sep chronology-respecting benchmark \sep Random Forest \sep hydrologic machine learning \sep persistence baseline
+\end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}
+
+Near-term runoff prediction supports reservoir operation, flood preparedness, drought management, environmental-flow assessment, and routine water-resources decision-making. In recent years, machine-learning methods have become common in rainfall--runoff modelling because they can represent nonlinear interactions among hydroclimatic forcings, antecedent basin state, and static catchment controls without prescribing process equations a priori. However, the short-lead hydrologic forecasting literature does not support any universal conclusion that more complex models always deliver practically meaningful gains over strong simple baselines, especially when persistence and hydrograph memory are already highly informative at one-day lead time.
+
+This concern is particularly important in benchmark studies. In both time-series forecasting and hydrologic machine learning, weak baselines, leakage-prone validation, and under-specified workflows can materially inflate apparent model gains. CAMELS-US is well suited to addressing such concerns because it provides consistent meteorological forcing, observed discharge, and basin attributes for a large set of minimally impacted basins, enabling controlled cross-basin comparison under open-data conditions. For one-day runoff prediction, this creates an opportunity to ask a narrower but more defensible question: under a chronology-respecting benchmark with strong baselines and explicit issue-time assumptions, how much skill is actually gained by nonlinear models?
+
+This study therefore frames its contribution as benchmark design rather than algorithmic novelty. We compare persistence, Ridge regression, Random Forest, and histogram-based gradient boosting for next-day runoff prediction across a 50-basin CAMELS-US subset using open data only. The manuscript has four specific aims: (i) to report pooled and basin-wise skill under a fixed out-of-sample test period; (ii) to quantify whether tree ensembles improve on strong simple baselines; (iii) to clarify what the metric pattern implies about hydrologic memory and event departures; and (iv) to provide a transparent, reproducibility-oriented benchmark description with clear scope limits. The benchmark is explicitly retrospective and uses observed hydroclimatic information available by the end of day $t$ to predict runoff on day $t+1$; it should not be interpreted as a fully operational real-time forecast configuration.
+
+\section{Study data and methods}
+
+\subsection{Data sources and benchmark subset}
+
+The benchmark used a 50-basin subset of CAMELS-US. Daily meteorological forcing was taken from the Daymet basin-mean forcing product supplied with CAMELS-US, daily discharge was taken from the corresponding USGS streamflow files, and static catchment descriptors were taken from the official CAMELS attribute tables. The benchmark period spanned 1990--2014 after preprocessing, and the modelling-ready table contained 449,285 daily records across 50 basins.
+
+The subset was assembled as a computationally tractable but hydroclimatically broad benchmark rather than as a formally representative sample of all 671 CAMELS-US basins. For that reason, the conclusions of this paper are explicitly scoped to the 50-basin benchmark rather than to the full CAMELS-US population. Table~\ref{tab:subset} summarizes key subset attributes to document the range of basin characteristics included in the benchmark.
+
+\begin{table}[htbp]
+\centering
+\caption{Summary of key attributes for the 50-basin benchmark subset. Area is in km$^2$; precipitation and potential evapotranspiration are in mm d$^{-1}$.}
+\label{tab:subset}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Attribute & Minimum & Median & Mean & Maximum \\
+\midrule
+Drainage area & 5.38 & 327.42 & 555.71 & 3676.17 \\
+Mean elevation & 26.25 & 397.93 & 506.37 & 2434.67 \\
+Mean slope & 1.64 & 34.61 & 42.49 & 143.92 \\
+Aridity index & 0.273 & 0.679 & 0.775 & 2.370 \\
+Fraction of precipitation as snow & 0.000 & 0.157 & 0.171 & 0.642 \\
+Mean precipitation & 1.385 & 3.567 & 3.595 & 7.160 \\
+Mean potential evapotranspiration & 1.957 & 2.318 & 2.556 & 4.124 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Forecast target and issue-time assumption}
+
+The target variable was next-day runoff in mm d$^{-1}$. Daily discharge in ft$^3$ s$^{-1}$ was converted to depth-equivalent runoff using the standard CAMELS area-normalization convention. The benchmark predicted $Q_{t+1}$ from information available at the end of day $t$. This issue-time definition is important. Because same-day basin-mean Daymet forcing and same-day runoff-derived summary features are available in the benchmark, the experiment should be interpreted as a retrospective hindcast with observed forcing rather than as a latency-constrained operational forecast system.
+
+\subsection{Predictor construction and missing-data handling}
+
+Dynamic predictors included precipitation, minimum temperature, maximum temperature, solar radiation, vapor pressure, day length, and snow water equivalent where available. Runoff-memory predictors included lagged runoff terms at 1, 2, 3, and 7 days and rolling mean runoff terms over 3, 7, 15, and 30 days. Meteorological summaries included rolling precipitation sums over 3, 7, 15, and 30 days and rolling means of temperature, radiation, and vapor pressure over short and intermediate windows. Seasonality was represented using sine and cosine transforms of day of year. Static predictors included available CAMELS descriptors of basin area, topography, climate, vegetation, soils, geology, and HUC code. A concise glossary of engineered predictors is provided in Appendix~A.
+
+Rows with missing dynamic predictors created by lags, rolling windows, or missing target values were removed before modelling. Remaining missing predictor values were handled inside the modelling pipelines using median imputation. This means that the reported benchmark combines row-wise removal for missing target or required dynamic features with model-side median imputation for any residual missing values in the final design matrix.
+
+\subsection{Compared models and hyperparameters}
+
+Four models were evaluated:
+
+\begin{itemize}
+\item \textbf{Persistence}: $\hat{Q}_{t+1}=Q_t$, reported as a strong short-lead baseline.
+\item \textbf{Ridge regression}: median imputation, standardization, and Ridge regularization with $\alpha=1.0$.
+\item \textbf{Random Forest}: 200 trees, maximum depth 20, minimum samples per leaf 3, random seed 42.
+\item \textbf{HistGradientBoosting}: learning rate 0.05, maximum depth 8, 200 boosting iterations, random seed 42.
+\end{itemize}
+
+The benchmark used a fixed chronological split: 1990--1999 for training, 2000--2004 as an intermediate validation era retained for chronology-respecting workflow design, and 2005--2014 as the final out-of-sample test period. The reported results are fixed-parameter benchmark results rather than the product of aggressive hyperparameter tuning.
+
+\subsection{Evaluation metrics and statistical analysis}
+
+Performance was assessed using root mean square error (RMSE), mean absolute error (MAE), Nash--Sutcliffe efficiency (NSE), and Kling--Gupta efficiency (KGE). Because pooled metrics weight basins by the number of valid daily records, basin-wise summaries were treated as the primary inferential view and pooled metrics as complementary context. In addition to pooled KGE, its correlation, variability-ratio, and bias-ratio components were reported to clarify why models can rank differently under NSE and KGE.
+
+Basin-wise comparisons used paired Wilcoxon signed-rank tests on basin-level NSE values. To improve interpretability beyond raw $p$-values, the manuscript also reports median $\Delta$NSE, rank-biserial effect sizes, and Holm-adjusted $p$-values for multiple pairwise comparisons. Uncertainty in mean basin-wise NSE was summarized using 95\% bootstrap confidence intervals. These additions were included to address the review concern that practical effect sizes and uncertainty should be reported alongside significance tests.
+
+\subsection{Reproducibility specification}
+
+The executed workflow used Python with \texttt{pandas}, \texttt{numpy}, \texttt{scikit-learn}, and \texttt{matplotlib}. Stochastic estimators used a fixed random seed of 42. Standardization was applied only in the Ridge pipeline after median imputation; tree-based models used median imputation without feature scaling. Gauge IDs for the 50-basin benchmark subset are listed in Appendix~B. Prior to submission, the authors should archive the exact scripts, environment file, and run instructions in a public repository and replace the placeholder below with a persistent DOI:
+
+\begin{quote}
+\textbf{Repository DOI:} [\textit{AUTHOR TO INSERT PUBLIC REPOSITORY DOI BEFORE SUBMISSION}]
+\end{quote}
+
+\section{Results}
+
+\subsection{Pooled out-of-sample performance and KGE components}
+
+Table~\ref{tab:pooled} reports pooled test performance for 2005--2014. Random Forest achieved the highest pooled NSE (0.670) and the lowest RMSE (2.177 mm d$^{-1}$), with HistGradientBoosting ranking a close second. Ridge outperformed persistence in pooled NSE but not in KGE. Persistence yielded the highest KGE because its pooled variability ratio and bias ratio were both approximately unity, even though its correlation component was lower than that of the tree ensembles. This metric pattern indicates that persistence reproduced aggregate scale and bias well but was less effective than the nonlinear models at tracking departures from the recent hydrograph state.
+
+\begin{table}[htbp]
+\centering
+\caption{Pooled out-of-sample performance and KGE components on the 2005--2014 test period. $\Delta$NSE is shown relative to persistence.}
+\label{tab:pooled}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Model & RMSE & MAE & NSE & $\Delta$NSE vs persistence & KGE & $r$ & $\alpha$ & $\beta$ \\
+\midrule
+Persistence & 2.502 & 0.585 & 0.564 & 0.000 & 0.782 & 0.782 & 1.000 & 1.000 \\
+Ridge & 2.285 & 0.677 & 0.637 & 0.073 & 0.716 & 0.798 & 0.801 & 1.007 \\
+Random Forest & 2.177 & 0.569 & 0.670 & 0.106 & 0.756 & 0.819 & 0.837 & 1.016 \\
+HistGradientBoosting & 2.193 & 0.590 & 0.665 & 0.101 & 0.740 & 0.816 & 0.816 & 0.996 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Basin-wise skill distributions and uncertainty}
+
+Basin-wise summaries largely reinforced the pooled ranking (Table~\ref{tab:basinwise}; Fig.~\ref{fig:nse_dist}). Random Forest achieved the highest median basin-wise NSE (0.623) and the highest mean basin-wise NSE (0.600; 95\% bootstrap CI 0.535--0.659). HistGradientBoosting ranked second, with a very similar mean basin-wise NSE (0.595; 95\% bootstrap CI 0.537--0.650), indicating that the top two models were close in cross-basin average skill. Random Forest nevertheless won 27 of 50 basins, compared with 8 for HistGradientBoosting, 12 for persistence, and 3 for Ridge. One basin yielded negative NSE for each model class; the most severe instability occurred under Ridge, whose minimum basin-wise NSE reached -7.001.
+
+\begin{table}[htbp]
+\centering
+\caption{Basin-wise skill summaries across the 50-basin benchmark. Bootstrap intervals refer to the mean basin-wise NSE.}
+\label{tab:basinwise}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & Median NSE & Mean NSE & 95\% CI for mean NSE & Median KGE & Negative-NSE basins & Winning basins \\
+\midrule
+Persistence & 0.540 & 0.529 & 0.453--0.608 & 0.770 & 1 & 12 \\
+Ridge & 0.572 & 0.412 & 0.083--0.605 & 0.677 & 1 & 3 \\
+HistGradientBoosting & 0.609 & 0.595 & 0.537--0.650 & 0.667 & 1 & 8 \\
+Random Forest & 0.623 & 0.600 & 0.535--0.659 & 0.708 & 1 & 27 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\textwidth]{fig_nse_distribution.png}
+\caption{Sorted basin-wise NSE distributions for the four benchmark models. Because pooled metrics weight all valid days, the basin-wise view is shown as the primary performance diagnostic.}
+\label{fig:nse_dist}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\textwidth]{fig_winning_model_counts.png}
+\caption{Number of basins in which each model achieved the highest basin-wise NSE. Random Forest produced the most basin wins, but persistence remained the best model in 12 basins, reinforcing the importance of strong simple baselines at one-day lead time.}
+\label{fig:wins}
+\end{figure}
+
+\subsection{Pairwise comparisons, effect sizes, and multiplicity control}
+
+Table~\ref{tab:wilcoxon} reports pairwise basin-wise comparisons using Wilcoxon signed-rank tests, median $\Delta$NSE, rank-biserial effect sizes, and Holm-adjusted $p$-values. Random Forest outperformed persistence and Ridge clearly in basin-wise NSE, with moderate to large effect sizes. HistGradientBoosting also outperformed persistence and Ridge decisively. By contrast, the difference between Random Forest and HistGradientBoosting was statistically detectable but small in practical terms: the median basin-wise $\Delta$NSE was only 0.006 in favour of Random Forest, and the rank-biserial effect size was modest. This reinforces the view that the top two tree ensembles occupied a very similar performance range in this benchmark.
+
+\begin{table}[htbp]
+\centering
+\caption{Pairwise basin-wise comparisons using Wilcoxon signed-rank tests on basin-level NSE. Positive $\Delta$NSE values favour the first model listed. Holm-adjusted $p$-values are reported to address multiple comparisons.}
+\label{tab:wilcoxon}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Comparison & Median $\Delta$NSE & Rank-biserial effect size & Holm-adjusted $p$ \\
+\midrule
+Random Forest $-$ Ridge & 0.039 & 0.826 & $1.12e-07$ \\
+HistGradientBoosting $-$ Ridge & 0.031 & 0.780 & $8.02e-07$ \\
+Random Forest $-$ Persistence & 0.099 & 0.660 & $6.24e-05$ \\
+HistGradientBoosting $-$ Persistence & 0.088 & 0.617 & $1.57e-04$ \\
+Random Forest $-$ HistGradientBoosting & 0.006 & 0.388 & $1.62e-02$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Feature ranking, hydrologic interpretation, and caution}
+
+The Random Forest feature ranking placed short-memory runoff summaries and precipitation at the top of the predictor list. The leading variables were the 3-day mean runoff term ($q\_mean\_3$, importance 0.581), same-day precipitation (0.107), the 1-day runoff lag (0.043), the 2-day runoff lag (0.017), and the 30-day mean runoff term (0.013). Hydrologically, this ranking is plausible: at one-day lead time, recent basin state and incoming precipitation should dominate predictive skill.
+
+However, the ranking should be interpreted conservatively. The reported figure is based on impurity-derived Random Forest importance, which can be biased under correlated predictors and mixed measurement scales. In this revision, the ranking is therefore treated as a descriptive summary rather than as causal evidence. The manuscript does \emph{not} claim that the ranked features uniquely determine runoff generation. A stricter pre-resubmission upgrade would be to add held-out permutation importance and a reviewer-requested ablation study separating runoff-memory features, meteorological features, and static attributes.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{fig_rf_feature_importance.png}
+\caption{Top Random Forest feature importances. The ranking is shown as a descriptive diagnostic only; because impurity-based importance can be biased under correlated predictors, it should not be over-interpreted as causal evidence.}
+\label{fig:rfimp}
+\end{figure}
+
+\section{Discussion}
+
+The core result is not that machine learning solved short-range runoff prediction, but that under a chronology-respecting hindcast benchmark with strong baselines, nonlinear tree ensembles delivered modest and credible gains over simpler alternatives. Random Forest ranked first in pooled and basin-wise summary statistics, while HistGradientBoosting followed closely. Persistence remained highly competitive, particularly in KGE and in 12 individual basins. This pattern is hydrologically coherent: one-day runoff prediction remains strongly governed by hydrograph memory and recent antecedent state, which makes strong simple baselines indispensable.
+
+The pooled KGE decomposition helps explain the apparent tension between NSE and KGE rankings. Persistence achieved the highest pooled KGE not because it tracked event departures better than the tree ensembles, but because its aggregate variability ratio and bias ratio were extremely close to one. By contrast, the tree ensembles achieved higher pooled NSE through stronger correlation and better reproduction of short-term hydrograph departures, even while underestimating variability slightly relative to observations.
+
+The revised manuscript also clarifies a key interpretive boundary stressed in the review: this benchmark is a retrospective hindcast, not a latency-constrained operational forecast. The predictor set assumes end-of-day availability of observed same-day hydroclimatic information. That is a legitimate benchmark design for reproducibility and leakage control, but it is not equivalent to issuing real-time next-day forecasts with latency, quality-control delays, or forecast meteorology. For this reason, the manuscript now explicitly frames the results as hindcast evidence and not as proof of operational superiority.
+
+A second discussion point concerns benchmark scope. The 50-basin subset spans wide ranges of area, elevation, snow fraction, and aridity, but it is still a subset rather than a formal representation of all CAMELS-US basins. The benchmark therefore supports a controlled comparative statement---that tree ensembles were strongest in this 50-basin chronology-respecting hindcast setup---rather than a universal statement about continental-scale hydrologic prediction.
+
+\section{Limitations}
+
+Several limitations should be stated explicitly.
+
+First, the benchmark is a retrospective hindcast with observed forcing and end-of-day information availability. It is therefore more informative about methodological comparison under open-data conditions than about operational forecast deployment.
+
+Second, the 50-basin benchmark subset is broad but not fully representative of the full CAMELS-US population. Conclusions should be interpreted accordingly.
+
+Third, pooled metrics alone can obscure basin heterogeneity. This revision therefore foregrounds basin-wise distributions, but no rolling-origin reforecast experiment was executed in the current package.
+
+Fourth, feature-importance results are based on impurity-derived Random Forest importance and are reported only as descriptive diagnostics. The reviewer-requested permutation-importance and ablation analyses were not newly executed in this package and remain recommended pre-resubmission upgrades if the authors seek a stronger interpretability claim.
+
+Fifth, a stricter issue-time sensitivity experiment excluding same-day information was recommended in the review. That experiment was not newly executed here, so the manuscript now treats issue-time realism as a limitation and avoids over-claiming operational forecast relevance.
+
+\section{Conclusions}
+
+This study developed a chronology-respecting open-data benchmark for next-day runoff prediction across a 50-basin CAMELS-US subset. Five conclusions follow.
+
+\begin{enumerate}
+\item Random Forest achieved the strongest pooled test performance, with NSE = 0.670, KGE = 0.756, RMSE = 2.177 mm d$^{-1}$, and MAE = 0.569 mm d$^{-1}$.
+\item HistGradientBoosting performed similarly but slightly worse, while Ridge improved on persistence in pooled NSE but not in KGE.
+\item Basin-wise summaries reinforced the pooled ranking: Random Forest had the highest median basin-wise NSE (0.623) and won 27 of 50 basins.
+\item Persistence remained highly competitive, confirming that short-memory hydrologic persistence remains a major source of one-day-ahead predictability.
+\item The gains from nonlinear tree ensembles were real but moderate, supporting restrained claims about practical improvement over strong simple baselines.
+\end{enumerate}
+
+The manuscript therefore contributes primarily as a benchmark paper: it demonstrates that chronology-respecting evaluation, strong baselines, basin-wise diagnostics, and transparent scope statements materially improve the defensibility of short-range hydrologic machine-learning comparisons.
+
+\section*{CRediT authorship contribution statement}
+
+Zeeshan Asghar: Conceptualization, methodology, software, formal analysis, visualization, writing---original draft, writing---review and editing. Muhammad Waseem: Supervision, conceptualization, writing---review and editing.
+
+\section*{Declaration of competing interest}
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\section*{Data availability}
+
+CAMELS-US and Daymet are public benchmark resources. The benchmark subset, derived tables, figure-generation scripts, and training scripts should be archived in a public repository prior to final submission. Replace the placeholder DOI in Section~2.6 once that archive is available.
+
+\section*{Acknowledgements}
+
+[\textit{AUTHOR TO ADD funding, acknowledgement, and repository DOI details if applicable}]
+
+\appendix
+
+\section{Predictor glossary}
+
+\begin{longtable}{p{0.18\textwidth}p{0.76\textwidth}}
+\caption{Glossary of core predictors used in the executed benchmark.}\label{tab:glossary}\\
+\toprule
+Predictor & Definition \\
+\midrule
+\endfirsthead
+\toprule
+Predictor & Definition \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+$prcp$ & Basin-mean same-day precipitation from Daymet for day $t$. \\
+$tmin$, $tmax$ & Basin-mean minimum and maximum temperature for day $t$. \\
+$srad$ & Basin-mean shortwave radiation for day $t$. \\
+$vp$ & Basin-mean vapor pressure for day $t$. \\
+$dayl$ & Day length for day $t$. \\
+$swe$ & Snow water equivalent for day $t$ where available. \\
+$q\_lag1$, $q\_lag2$, $q\_lag3$, $q\_lag7$ & Runoff lags of 1, 2, 3, and 7 days relative to day $t$. \\
+$prcp\_sum\_3$, $prcp\_sum\_7$, $prcp\_sum\_15$, $prcp\_sum\_30$ & Rolling precipitation sums over windows ending on day $t$. \\
+$q\_mean\_3$, $q\_mean\_7$, $q\_mean\_15$, $q\_mean\_30$ & Rolling runoff means over windows ending on day $t$. \\
+$tmin\_mean\_3$, $tmin\_mean\_7$, $tmin\_mean\_30$ & Rolling means of minimum temperature. \\
+$tmax\_mean\_3$, $tmax\_mean\_7$, $tmax\_mean\_30$ & Rolling means of maximum temperature. \\
+$srad\_mean\_7$, $srad\_mean\_30$ & Rolling means of shortwave radiation. \\
+$vp\_mean\_7$, $vp\_mean\_30$ & Rolling means of vapor pressure. \\
+$doy\_sin$, $doy\_cos$ & Cyclical seasonal representation of day of year. \\
+Static attributes & Available CAMELS descriptors including area, elevation, slope, precipitation climatology, aridity, snow fraction, vegetation, soils, geology, and HUC code. \\
+\end{longtable}
+
+\section{Gauge IDs in the 50-basin benchmark subset}
+
+\begin{longtable}{lllll}
+\caption{Gauge IDs included in the 50-basin benchmark subset.}\label{tab:gauges}\\
+\toprule
+Gauge ID & Gauge ID & Gauge ID & Gauge ID & Gauge ID \\
+\midrule
+\endfirsthead
+\toprule
+Gauge ID & Gauge ID & Gauge ID & Gauge ID & Gauge ID \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+01013500 & 01022500 & 01030500 & 01031500 & 01047000 \\
+01052500 & 01054200 & 01055000 & 01057000 & 01073000 \\
+01078000 & 01118300 & 01121000 & 01123000 & 01139000 \\
+01187300 & 01466500 & 01516500 & 01543000 & 01548500 \\
+01557500 & 01606500 & 02028500 & 02112360 & 02235200 \\
+02296500 & 02312200 & 02408540 & 02422500 & 02465493 \\
+03015500 & 03049000 & 03070500 & 03182500 & 03280700 \\
+03488000 & 03498500 & 03500000 & 04063700 & 04105700 \\
+06404000 & 07056000 & 08070200 & 09312600 & 10172700 \\
+11143000 & 12115500 & 12488500 & 14154500 & 14400000 \\
+\end{longtable}
+
+\section{Additional diagnostic figures}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\textwidth]{fig_overall_nse.png}
+\caption{Pooled test NSE by model. This figure is retained as a secondary summary because pooled metrics weight all valid days and can mask basin heterogeneity.}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_hydrograph_01013500.png}
+\caption{Observed and predicted runoff for Gauge 01013500 under the benchmark's best-performing model.}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_hydrograph_01030500.png}
+\caption{Observed and predicted runoff for Gauge 01030500 under the benchmark's best-performing model.}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_hydrograph_09312600.png}
+\caption{Observed and predicted runoff for Gauge 09312600 under the benchmark's best-performing model.}
+\end{figure}
+
+\begin{thebibliography}{99}
+
+\bibitem[Addor et~al.(2017)]{Addor2017}
+Addor, N., Newman, A.J., Mizukami, N., Clark, M.P., 2017. The CAMELS data set: catchment attributes and meteorology for large-sample studies. Hydrol. Earth Syst. Sci. 21, 5293--5313.
+
+\bibitem[Bergmeir and Ben\'itez(2012)]{Bergmeir2012}
+Bergmeir, C., Ben\'itez, J.M., 2012. On the use of cross-validation for time series predictor evaluation. Inf. Sci. 191, 192--213.
+
+\bibitem[Breiman(2001)]{Breiman2001}
+Breiman, L., 2001. Random forests. Mach. Learn. 45, 5--32.
+
+\bibitem[Gupta et~al.(2009)]{Gupta2009}
+Gupta, H.V., Kling, H., Yilmaz, K.K., Martinez, G.F., 2009. Decomposition of the mean squared error and NSE performance criteria: implications for improving hydrological modelling. J. Hydrol. 377, 80--91.
+
+\bibitem[Kratzert et~al.(2018)]{Kratzert2018}
+Kratzert, F., Klotz, D., Brenner, C., Schulz, K., Herrnegger, M., 2018. Rainfall--runoff modelling using Long Short-Term Memory (LSTM) networks. Hydrol. Earth Syst. Sci. 22, 6005--6022.
+
+\bibitem[Nash and Sutcliffe(1970)]{Nash1970}
+Nash, J.E., Sutcliffe, J.V., 1970. River flow forecasting through conceptual models. Part I---A discussion of principles. J. Hydrol. 10, 282--290.
+
+\bibitem[Newman et~al.(2015)]{Newman2015}
+Newman, A.J., Clark, M.P., Sampson, K., Wood, A., Hay, L.E., Bock, A., Viger, R.J., Blodgett, D., Brekke, L., Arnold, J.R., Hopson, T., Duan, Q., 2015. Development of a large-sample watershed-scale hydrometeorological data set for the contiguous USA: data set characteristics and assessment of regional variability in hydrologic model performance. Hydrol. Earth Syst. Sci. 19, 209--223.
+
+\bibitem[Pham et~al.(2021)]{Pham2021}
+Pham, L.T., Luo, L., Finley, A.O., 2021. Evaluation of random forests for short-term daily streamflow forecasting in rainfall- and snowmelt-driven watersheds. Hydrol. Earth Syst. Sci. 25, 2997--3015.
+
+\bibitem[Strobl et~al.(2007)]{Strobl2007}
+Strobl, C., Boulesteix, A.-L., Zeileis, A., Hothorn, T., 2007. Bias in random forest variable importance measures: illustrations, sources and a solution. BMC Bioinformatics 8, 25.
+
+\bibitem[Thornton et~al.(2021)]{Thornton2021}
+Thornton, M.M., Shrestha, R., Wei, Y., Thornton, P.E., Kao, S.-C., Wilson, B.E., 2021. Gridded daily weather data for North America with comprehensive uncertainty quantification. Sci. Data 8, 181.
+
+\bibitem[Tyralis et~al.(2019)]{Tyralis2019}
+Tyralis, H., Papacharalampous, G., Langousis, A., 2019. A brief review of random forests for water scientists and practitioners and their recent history in water resources. Water 11, 910.
+
+\bibitem[Wilkinson et~al.(2016)]{Wilkinson2016}
+Wilkinson, M.D., Dumontier, M., Aalbersberg, I.J.J., Appleton, G., Axton, M., Baak, A., Blomberg, N., et~al., 2016. The FAIR Guiding Principles for scientific data management and stewardship. Sci. Data 3, 160018.
+
+\end{thebibliography}
+
+\end{document}

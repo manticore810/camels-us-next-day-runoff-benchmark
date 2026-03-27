@@ -1,0 +1,5 @@
+Chronology-respecting hindcast benchmark for 50 CAMELS-US basins
+Random Forest achieved the highest pooled test NSE (0.670)
+Basin-wise summaries also ranked Random Forest first
+Persistence remained highly competitive at one-day lead time
+Gains over strong simple baselines were moderate, not transformative

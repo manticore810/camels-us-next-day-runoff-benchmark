@@ -1,0 +1,5 @@
+model,winning_basins
+RandomForest,27
+Persistence,12
+HistGBR,8
+Ridge,3

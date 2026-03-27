@@ -1,0 +1,19 @@
+Dear Editor,
+
+Please consider our manuscript, “Benchmarking interpretable machine-learning models for next-day runoff prediction across a 50-basin CAMELS-US subset,” for publication in the Journal of Hydrology.
+
+This manuscript presents a chronology-respecting retrospective hindcast benchmark for one-day-ahead runoff prediction using open CAMELS-US data. Daily Daymet basin-mean forcing, USGS discharge, and static catchment attributes were assembled for a 50-basin benchmark subset spanning 1990–2014. Four models were compared under a fixed out-of-sample temporal split: persistence, Ridge regression, Random Forest, and HistGradientBoosting.
+
+Random Forest achieved the strongest pooled test performance (NSE = 0.670, KGE = 0.756, RMSE = 2.177 mm d^-1, MAE = 0.569 mm d^-1), and basin-wise summaries reinforced the same ranking. At the same time, persistence remained highly competitive, particularly at one-day lead time, indicating that hydrologic memory remains a dominant source of short-range predictability. We believe the manuscript will be of interest to readers concerned with hydrologic forecasting, benchmark design, and reproducible machine-learning evaluation.
+
+This revised package was strengthened in response to peer-review feedback. The manuscript now clarifies that the study is a hindcast benchmark rather than a latency-constrained operational forecast; it adds a reproducibility specification, explicit hyperparameters, stronger basin-wise statistical reporting, KGE component reporting, uncertainty summaries, a predictor glossary, and a more restrained interpretation of feature importance.
+
+The manuscript is original, is not under consideration elsewhere, and has been approved for submission by all authors.
+
+Sincerely,
+
+Zeeshan Asghar
+Corresponding author
+Ghulam Ishaq Khan Institute of Engineering Sciences and Technology
+Topi, Khyber Pakhtunkhwa, Pakistan
+zeeshan.asghar@giki.edu.pk
