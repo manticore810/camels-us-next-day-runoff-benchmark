@@ -1,0 +1,35 @@
+name: camels-regime
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - xarray
+  - netcdf4
+  - h5netcdf
+  - dask
+  - pyarrow
+  - pyyaml
+  - tqdm
+  - requests
+  - geopandas
+  - shapely
+  - pyogrio
+  - rasterio
+  - rioxarray
+  - fiona
+  - joblib
+  - matplotlib
+  - jupyterlab
+  - pip:
+      - hsclient
+      - pydaymet
+      - dataretrieval
+      - xgboost
+      - lightgbm
+      - shap
+      - neuralhydrology
