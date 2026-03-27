@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite the archived Zenodo release."
+title: "CAMELS-US next-day runoff benchmark"
+type: software
+authors:
+  - family-names: "Asghar"
+    given-names: "Zeeshan"
+    orcid: "https://orcid.org/0000-0002-1029-2444"
+    affiliation: "Ghulam Ishaq Khan Institute of Engineering Sciences and Technology, Topi, Khyber Pakhtunkhwa, Pakistan"
+  - family-names: "Waseem"
+    given-names: "Muhammad"
+    orcid: "https://orcid.org/0000-0001-9442-5664"
+    affiliation: "Ghulam Ishaq Khan Institute of Engineering Sciences and Technology, Topi, Khyber Pakhtunkhwa, Pakistan"
+abstract: "Open-data benchmark for chronology-respecting next-day runoff prediction across a 50-basin CAMELS-US subset using persistence, Ridge, Random Forest, and HistGradientBoosting."
+repository-code: "https://github.com/manticore810/camels-us-next-day-runoff-benchmark"
+license: "MIT"
+keywords:
+  - hydrology
+  - streamflow forecasting
+  - rainfall-runoff
+  - CAMELS-US
+  - machine learning
+version: "1.0.0"
+date-released: 2025-03-27
